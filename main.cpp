@@ -9,32 +9,27 @@
 class Graph {
 public:
     using TVertex = size_t;
-    using TVertexList = std::list<TVertex>;
-    using TAdjList = std::vector<TVertexList>;
+    using TVertexSet= std::set<TVertex>;
+    using TAdjList = std::vector<TVertexSet>;
 
     Graph(size_t size)
             : graph(size)
     {}
 
     void AddEdge(const TVertex& a, const TVertex& b) {
-        graph[a].push_back(b);
-        graph[b].push_back(a);
+        graph[a].insert(b);
+        graph[b].insert(a);
     }
 
-    void AddVertex(const TVertex& v) {
-        graph[v];
-    }
-
-    std::vector<TVertexList> FindComps() const {
-        std::vector<TVertexList> comps;
+    std::vector<TVertexSet> FindComps() const {
+        std::vector<TVertexSet> comps;
         bool used[graph.size()];
-        for (size_t i = 0; i < graph.size(); ++i)
-            used[i] = false;
         for (size_t i = 0; i < graph.size(); ++i) {
-            if (i % 10000 == 0)
-//                std::cout << i << "th iteration is processing\n";
+            used[i] = false;
+        }
+        for (size_t i = 0; i < graph.size(); ++i) {
             if (!used[i]) {
-                TVertexList comp;
+                TVertexSet comp;
                 comp = DFS(i, comp, used);
                 comps.push_back(comp);
             }
@@ -54,9 +49,14 @@ public:
 private:
     TAdjList graph;
 
-    TVertexList& DFS(TVertex v, TVertexList& comp, bool* used) const {
+    TVertexSet& DFS(TVertex v, TVertexSet& comp, bool* used) const {
         used[v] = true;
-        comp.push_back(v);
+        comp.insert(v);
+        /*
+        std::cout << "adj of " << v << ":\n";
+        for (auto& elem : AdjVertices(v))
+            std::cout << "\t" << elem << "\n";
+        */
         for (const auto& elem : AdjVertices(v)) {
             if (!used[elem])
                 DFS(elem, comp, used);
@@ -64,7 +64,7 @@ private:
         return comp;
     }
 
-    const TVertexList& AdjVertices(TVertex v) const {
+    const TVertexSet& AdjVertices(TVertex v) const {
         return graph[v];
     }
 };
@@ -80,10 +80,10 @@ std::ostream& operator<<(std::ostream& out, Graph graph) {
     out << "}\n";
 }
 
-template <typename T, typename Dist>
+template <typename T, typename Dist, typename Cmp>
 class ClusterCC {
 public:
-    ClusterCC(const std::vector<T>& data, Dist distance, size_t lim)
+    ClusterCC(std::vector<T>& data, Dist distance, size_t lim)
         : data(data), distance(distance), limit(lim), graph(data.size())
     {}
 
@@ -104,21 +104,32 @@ public:
 
 private:
     Graph graph;
-    const std::vector<T>& data;
+    std::vector<T>& data;
     const Dist distance;
     const size_t limit;
-    std::vector<Graph::TVertexList> clusters;
+    std::vector<Graph::TVertexSet> clusters;
     void GenerateGraph() {
         auto start = time(NULL);
+        std::sort(data.begin(), data.end(), Cmp());
         if (data.size() == 0)
             return;
-        for (size_t i = 0; i < data.size() - 1; ++i)
-            for (size_t j = i + 1; j < data.size(); ++j) {
-                auto dist = distance(data[i], data[j]);
-                if (dist < limit) {
-                    graph.AddEdge(i, j);
-                }
+
+        for (size_t i = 0; i < data.size(); ++i) {
+            std::bitset<32> plus2 = -1;
+            auto counter = data[i].count();
+
+            if (counter <= 32 - 2) {
+                plus2 = plus2 >> (30 - counter);
             }
+
+            auto end = std::upper_bound(data.begin(), data.end(), plus2, Cmp()) - data.begin();
+
+            for (auto j = i; j < end; ++j) {
+                auto dist = distance(data[i], data[j]);
+                if (dist < limit)
+                    graph.AddEdge(i, j);
+            }
+        }
         auto finish = time(NULL);
         std::cout << "Graph generating time is " << finish - start << " seconds.\n";
     }
@@ -150,9 +161,11 @@ int main() {
         data[i] = x;
     }
     fin.close();
+    std::sort(data.begin(), data.end(), HammingCmp());
     ClusterCC<std::bitset<32>,
             size_t (*)(const std::bitset<32>&,
-                       const std::bitset<32>&)> MyCC(data, HammingDistance, 3);
+                       const std::bitset<32>&),
+                               HammingCmp> MyCC(data, HammingDistance, 3);
     auto result = MyCC.Solve();
     std::cout << "Number of clusters:\t";
     std::cout << result;
