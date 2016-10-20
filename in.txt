@@ -1,0 +1,75 @@
+7 5
+00110
+00111
+11010
+00000
+00000
+00101
+11010
+
+
+
+class Graph {
+public:
+    using TVertex = size_t;
+    using TVertexSet = std::unordered_set<TVertex>;
+    using TAdjList = std::unordered_map<TVertex, TVertexSet>;
+
+    void AddEdge(const TVertex& a, const TVertex& b) {
+        graph[a].insert(b);
+        graph[b].insert(a);
+    }
+
+    void AddVertex(const TVertex& v) {
+        graph[v];
+    }
+
+    std::vector<TVertexSet> FindComps() const {
+        std::vector<TVertexSet> comps;
+        bool used[graph.size()];
+        for (size_t i = 0; i < graph.size(); ++i)
+            used[i] = false;
+        for (size_t i = 0; i < graph.size(); ++i) {
+            if (i % 1000 == 0)
+                std::cout << i << "th iteration is processing\n";
+            if (!used[i]) {
+                TVertexSet comp;
+                comp = DFS(i, comp, used);
+                comps.push_back(comp);
+            }
+
+        }
+        return comps;
+    }
+
+    size_t Size() const {
+        return graph.size();
+    }
+
+    const TAdjList& GetAdjList() const {
+        return graph;
+    }
+
+private:
+    TAdjList graph;
+    TVertexSet empty_set;
+
+    TVertexSet& DFS(TVertex v, TVertexSet& comp, bool* used) const {
+        used[v] = true;
+        comp.insert(v);
+        for (const auto& elem : AdjVertices(v)) {
+            if (!used[elem])
+                DFS(elem, comp, used);
+        }
+        return comp;
+    }
+
+    const TVertexSet& AdjVertices(TVertex v) const {
+        const auto it = graph.find(v);
+        if (it != graph.end()) {
+            return it->second;
+        } else {
+            return empty_set;
+        }
+    }
+};
