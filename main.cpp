@@ -84,7 +84,7 @@ template <typename T, typename Dist, typename Cmp>
 class ClusterCC {
 public:
     ClusterCC(std::vector<T>& data, Dist distance, size_t lim)
-        : data(data), distance(distance), limit(lim), graph(data.size())
+            : data(data), distance(distance), limit(lim), graph(data.size())
     {}
 
     size_t Solve() {
@@ -136,7 +136,7 @@ private:
 };
 
 size_t HammingDistance(const std::bitset<32>& a,
-                     const std::bitset<32>& b) {
+                       const std::bitset<32>& b) {
     std::bitset<32> x = a ^ b;
     return x.count();
 }
@@ -150,7 +150,7 @@ struct HammingCmp {
 
 int main() {
     auto start = time(NULL);
-    const  std::string filename = "/home/ed/Документы/Coding/Homework/CC_Clustering/b200000x32.txt";
+    const  std::string filename = "b200000x32.txt";
     std::ifstream fin(filename);
     size_t N, M;
     fin >> N >> M;
@@ -165,7 +165,7 @@ int main() {
     ClusterCC<std::bitset<32>,
             size_t (*)(const std::bitset<32>&,
                        const std::bitset<32>&),
-                               HammingCmp> MyCC(data, HammingDistance, 3);
+            HammingCmp> MyCC(data, HammingDistance, 3);
     auto result = MyCC.Solve();
     std::cout << "Number of clusters:\t";
     std::cout << result;
