@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <list>
+#include <unordered_set>
 #include <vector>
 #include <set>
 
@@ -49,14 +50,10 @@ public:
 private:
     TAdjList graph;
 
+    // DFS возвращает компоненту связности
     TVertexSet& DFS(TVertex v, TVertexSet& comp, bool* used) const {
         used[v] = true;
         comp.insert(v);
-        /*
-        std::cout << "adj of " << v << ":\n";
-        for (auto& elem : AdjVertices(v))
-            std::cout << "\t" << elem << "\n";
-        */
         for (const auto& elem : AdjVertices(v)) {
             if (!used[elem])
                 DFS(elem, comp, used);
@@ -89,16 +86,7 @@ public:
 
     size_t Solve() {
         GenerateGraph();
-//        std::cout << graph;
         clusters = graph.FindComps();
-/*
-        for (const auto& item : clusters) {
-            std::cout << "CC:\n";
-            for (const auto& elem : item)
-                std::cout << "\t" << elem << "\n";
-            std::cout << "\n";
-        }
-*/
         return clusters.size();
     }
 
@@ -108,24 +96,30 @@ private:
     const Dist distance;
     const size_t limit;
     std::vector<Graph::TVertexSet> clusters;
+
     void GenerateGraph() {
-        auto start = time(NULL);
-        std::sort(data.begin(), data.end(), Cmp());
         if (data.size() == 0)
             return;
 
+        auto start = time(NULL);
+
+        // отсортируем строки по количеству единиц
+        std::sort(data.begin(), data.end(), Cmp());
+
         for (size_t i = 0; i < data.size(); ++i) {
-            std::bitset<32> plus2 = -1;
-            auto counter = data[i].count();
-
+            std::bitset<32> plus2 = -1; // строка полностью из единиц
+            auto counter = data[i].count(); // количество единиц в рассматриваемой строке
             if (counter <= 32 - 2) {
-                plus2 = plus2 >> (30 - counter);
-            }
+                plus2 = plus2 >> (30 - counter); // оставляем в строке на две единицы больше,
+            }                                    // чем в рассматриваемой
 
+            // локальным поиском найдем индекс первой строки, в которой на 3 единицы больше
             auto end = std::upper_bound(data.begin(), data.end(), plus2, Cmp()) - data.begin();
 
+            // сравниваем рассматриваемую строку только с теми, в которых не больше, чем counter + 2 единицы
             for (auto j = i; j < end; ++j) {
                 auto dist = distance(data[i], data[j]);
+                // добавляем в граф ребро, если расстояние между рассматриваемыми строками <= 2
                 if (dist < limit)
                     graph.AddEdge(i, j);
             }
@@ -150,27 +144,38 @@ struct HammingCmp {
 
 int main() {
     auto start = time(NULL);
+
     const  std::string filename = "b200000x32.txt";
     std::ifstream fin(filename);
     size_t N, M;
     fin >> N >> M;
-    std::vector<std::bitset<32>> data(N);
+    // поместим строки в set, чтобы избавиться от повторяющихся строк
+    std::unordered_set<std::bitset<32>> dataset;
     for (size_t i = 0; i < N; ++i) {
         std::bitset<32> x;
         fin >> x;
-        data[i] = x;
+        dataset.insert(x);
     }
     fin.close();
-    std::sort(data.begin(), data.end(), HammingCmp());
+
+    // поместим строки в vector для дальнейшей работы
+    std::vector<std::bitset<32>> data(dataset.size());
+    size_t i = 0;
+    for (const auto& item : dataset) {
+        data[i] = item;
+        ++i;
+    }
+
     ClusterCC<std::bitset<32>,
             size_t (*)(const std::bitset<32>&,
                        const std::bitset<32>&),
             HammingCmp> MyCC(data, HammingDistance, 3);
     auto result = MyCC.Solve();
+
+    auto finish = time(NULL);
+    std::cout << "Total time is " << finish - start << " seconds.\n";
     std::cout << "Number of clusters:\t";
     std::cout << result;
     std::cout << std::endl;
-    auto finish = time(NULL);
-    std::cout << "Total time is " << finish - start << " seconds.\n";
     return 0;
 }
